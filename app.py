@@ -3,6 +3,7 @@ import time
 
 from fastapi import FastAPI, File, status, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from utils.file_parser import FileParser
@@ -10,6 +11,15 @@ from utils.api import ClientAPI
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
+
 
 @app.post('/file/upload')
 def upload_resume(
