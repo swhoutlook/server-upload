@@ -3,6 +3,8 @@ from typing import Dict
 
 import pandas as pd
 
+from settings import DEFAULT_TABLE_NAME
+
 
 TableData = Dict[str, pd.DataFrame]
 
@@ -40,7 +42,7 @@ class FileParser:
                 if line:
                     records.append(list(map(lambda val:val.strip(), line.split(';'))))
 
-        return {'table': pd.DataFrame.from_records(records, columns=cols)}
+        return {DEFAULT_TABLE_NAME: pd.DataFrame.from_records(records, columns=cols).infer_objects()}
     
 
     @classmethod
@@ -51,7 +53,7 @@ class FileParser:
 
         CSV files must have a header row.
         '''
-        return {'table': pd.read_csv(file)}
+        return {DEFAULT_TABLE_NAME: pd.read_csv(file)}
     
 
     @classmethod
