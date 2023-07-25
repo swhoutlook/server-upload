@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from utils.file_parser import FileParser
+from utils.api import ClientAPI
 
 
 app = FastAPI()
@@ -14,7 +15,7 @@ app = FastAPI()
 def upload_resume(
     file: UploadFile = File(...)
 ) -> JSONResponse:
-    _hex = hex(round(time.time() * 1e7))[1:]
+    _hex = hex(round(time.time() * 1e7))
     ext = file.filename.split('.')[-1]
     
     try:
@@ -24,14 +25,11 @@ def upload_resume(
             f.write(contents)
             
         data = FileParser.parse_file(write_path)
-
-        # -----------------------
-        # insert to postgres here
-        # -----------------------
-        for tab in data:
-            print(tab)
-            print(data[tab])
-
+        
+        ClientAPI.create_db(_hex)
+        for (table, df) in data.items():
+            ClientAPI.create_table(_hex, table, df.columns, df.dtypes.to_list())
+            ClientAPI.insert_many(_hex, table, df)
         os.remove(write_path)
 
         return JSONResponse(
