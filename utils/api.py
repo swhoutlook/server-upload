@@ -47,10 +47,20 @@ class ClientAPI:
     @classmethod
     def insert_many(cls, db: str, table: str, df: pd.DataFrame):
         rows = df.to_records(index=False)
-        query = f'''
-            INSERT INTO {table} VALUES
-            {", ".join([str(r) for r in rows])}
-        '''
+        row_strs = ''
+        for row in rows:
+            row_str = '('
+            for col in row:
+                if not col:
+                    row_str += 'NULL,'
+                elif type(col) == str:
+                    col = col.replace('\'', '\'\'').replace('(', '\\(').replace(')', '\\)')
+                    row_str += f'\'{col}\','
+                else:
+                    row_str += f'{col},'
+            row_strs  += f'{row_str[:-1]}),'
+
+        query = f'INSERT INTO {table} VALUES {row_strs[:-1]}'
         conn = cls.create_conn(db)
         conn.cursor().execute(query)
         conn.commit()
