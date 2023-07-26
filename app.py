@@ -47,11 +47,13 @@ def upload_resume(
             status_code=status.HTTP_200_OK
         )
     except ValueError as e:
+        print(e)
         return JSONResponse(
             content=str(e), 
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
-    except Exception:
+    except Exception as e:
+        print(e)
         return JSONResponse(
             content='There was an error uploading the file.', 
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
