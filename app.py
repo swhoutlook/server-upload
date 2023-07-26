@@ -21,6 +21,11 @@ app.add_middleware(
 )
 
 
+@app.get('/')
+def root() -> str:
+    return 'ping'
+
+
 @app.post('/file/upload')
 def upload_resume(
     file: UploadFile = File(...)
