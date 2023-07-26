@@ -2,57 +2,75 @@ import requests
 from typing import List
 
 import pandas as pd
+import psycopg2
 from numpy import dtype
 
-from settings import CREATE_DB_API_URL, QUERY_API_URL
+from settings import (
+    CREATE_DB_API_URL, 
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    POSTGRES_HOST,
+    POSTGRES_PORT
+)
 
+dtype_mappings = {
+    'int64': 'INT',
+    'float64': 'FLOAT'
+}
 
 class ClientAPI:
     headers = {'content-type': 'application/json'}
-    dtype_mappings = {
-        'int64': 'INT',
-        'float64': 'FLOAT'
-    }
+    
+    @classmethod
+    def create_conn(cls, db: str): 
+        connection = psycopg2.connect(
+            database=f'_{db}',
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
+        )
+        connection.autocommit = True
+        return connection
 
 
     @classmethod
-    def create_db(cls, name: str):
-        requests.get(
+    def create_db(cls, db: str):
+        r = requests.get(
             CREATE_DB_API_URL, 
-            params={'db_name': name}, 
+            params={'db_name': '_' + db}, 
             headers=cls.headers
         )
+        print(r.text)
     
     
     @classmethod
     def insert_many(cls, db: str, table: str, df: pd.DataFrame):
         rows = df.to_records(index=False)
-        print(f'INSERT INTO {table} VALUES {", ".join([str(r) for r in rows])}')
-        
-        r = requests.get(
-            QUERY_API_URL,
-            params={'db_name': db, 'query_str': f'INSERT INTO {table} VALUES {", ".join([str(r) for r in rows])}'},
-            headers=cls.headers
-        )
-    
+        query = f'''
+            INSERT INTO {table} VALUES
+            {", ".join([str(r) for r in rows])}
+        '''
+        conn = cls.create_conn(db)
+        conn.cursor().execute(query)
+        conn.commit()
+
 
     @classmethod
     def select_all(cls, db: str, table: str):
-        r = requests.get(
-            QUERY_API_URL,
-            params={'db_name': db, 'query_str': f'SELECT * FROM {table}'},
-            headers=cls.headers
-        )
-        return r.json()
+        query = f'SELECT * FROM {table.lower()}'
+        conn = cls.create_conn(db)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        conn.commit()
+        return cursor.fetchall()
     
 
     @classmethod
     def create_table(cls, db: str, table: str, cols: List[str], dtypes: List[dtype]):
-        query_str = f'''CREATE TABLE IF NOT EXISTS {table} ({", ".join([
-            f"{column} {cls.dtype_mappings.get(str(dtype), 'TEXT')}" for (column, dtype) in zip(cols, dtypes)])
+        query = f'''CREATE TABLE IF NOT EXISTS {table} ({", ".join([
+            f"{column} {dtype_mappings.get(str(dtype), 'TEXT')}" for (column, dtype) in zip(cols, dtypes)])
         });'''
-        requests.get(
-            QUERY_API_URL,
-            params={'db_name': db, 'query_str': query_str},
-            headers=cls.headers
-        )
+        conn = cls.create_conn(db)
+        conn.cursor().execute(query)
+        conn.commit()
